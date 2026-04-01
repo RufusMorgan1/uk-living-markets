@@ -1,34 +1,158 @@
-export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  if (req.method === "OPTIONS") return res.status(200).end();
-
-  const { q, page = 1 } = req.query;
-  if (!q) return res.status(400).json({ error: "Missing query param" });
-
-  const apiKey = process.env.NEWS_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "NEWS_API_KEY not configured" });
-
-  try {
-    const url = new URL("https://newsapi.org/v2/everything");
-    url.searchParams.set("q", q);
-    url.searchParams.set("language", "en");
-    url.searchParams.set("sortBy", "publishedAt");
-    url.searchParams.set("pageSize", "30");
-    url.searchParams.set("page", String(page));
-
-    const response = await fetch(url.toString(), {
-      headers: { "X-Api-Key": apiKey },
-    });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      return res.status(response.status).json({ error: err.message || `NewsAPI error ${response.status}` });
-    }
-
-    const data = await response.json();
-    return res.status(200).json(data);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UK Living Markets — News Feed</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  :root{--bg:#0B0C0D;--surface:rgba(255,255,255,0.03);--border:rgba(255,255,255,0.07);--text:#F0EBE0;--muted:rgba(255,255,255,0.28);}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',system-ui,sans-serif;min-height:100vh;}
+  ::-webkit-scrollbar{width:3px;height:3px;}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:2px;}
+  #header{padding:24px 32px 0;border-bottom:1px solid var(--border);transition:background 0.4s;}
+  .hi{max-width:980px;margin:0 auto;}
+  .htop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;gap:14px;flex-wrap:wrap;}
+  .eyebrow{font-size:10px;letter-spacing:0.22em;font-weight:700;margin-bottom:5px;text-transform:uppercase;}
+  .pulse{animation:pulse 2s ease infinite;display:inline-block;margin-right:4px;}
+  h1{font-family:'Libre Baskerville',Georgia,serif;font-size:clamp(20px,3.5vw,30px);font-weight:700;letter-spacing:-0.03em;line-height:1.15;}
+  .sub{font-size:13px;color:rgba(255,255,255,0.3);margin-top:4px;}
+  .acts{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.42);padding:7px 13px;border-radius:7px;font-size:12px;font-weight:700;letter-spacing:0.07em;cursor:pointer;text-transform:uppercase;transition:all 0.18s;font-family:'DM Sans',sans-serif;}
+  .btn:disabled{opacity:0.28;cursor:not-allowed;}
+  .btn:hover:not(:disabled){background:rgba(255,255,255,0.055);color:rgba(255,255,255,0.72);}
+  .btn-gold{border-color:rgba(255,190,70,0.38);color:#FFBE46;}
+  .btn-gold:hover:not(:disabled){background:rgba(255,190,70,0.09);}
+  .btn-green{border-color:rgba(76,175,80,0.38)!important;color:#4CAF50!important;background:rgba(76,175,80,0.07)!important;}
+  .ts{font-size:11px;color:rgba(255,255,255,0.18);}
+  .tabs{display:flex;gap:2px;overflow-x:auto;padding-bottom:1px;}
+  .tab{background:transparent;border:none;padding:9px 15px;border-radius:7px 7px 0 0;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.18s;color:rgba(255,255,255,0.36);border-bottom:2px solid transparent;font-family:'DM Sans',sans-serif;}
+  .tab:hover{color:rgba(255,255,255,0.68);}
+  .tab.active{font-weight:700;color:#0B0C0D;margin-bottom:-1px;}
+  #body{max-width:980px;margin:0 auto;padding:24px 32px 60px;}
+  .meta{font-size:11px;color:rgba(255,255,255,0.18);margin-bottom:13px;letter-spacing:0.07em;display:flex;justify-content:space-between;flex-wrap:wrap;gap:7px;}
+  .src-bar{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:15px;}
+  .src-chip{font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid rgba(255,255,255,0.09);color:rgba(255,255,255,0.3);}
+  .spinner-wrap{text-align:center;padding:64px 0;}
+  .spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,0.07);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 14px;}
+  .spinner-label{font-size:11px;color:rgba(255,255,255,0.25);letter-spacing:0.14em;}
+  .cards{display:flex;flex-direction:column;gap:9px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;cursor:pointer;transition:background 0.14s,border-color 0.14s;animation:fadeUp 0.36s ease both;}
+  .card:hover{background:rgba(255,255,255,0.052);}
+  .card-deal{border-left-width:3px;}
+  .ct{display:flex;justify-content:space-between;gap:13px;}
+  .cm{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;align-items:center;}
+  .tag{font-size:10px;font-weight:700;letter-spacing:0.09em;text-transform:uppercase;padding:2px 6px;border-radius:3px;}
+  .cdate{font-size:11px;color:rgba(255,255,255,0.25);}
+  .ctit{font-family:'Libre Baskerville',Georgia,serif;font-size:14px;font-weight:700;color:#F0EBE0;line-height:1.48;}
+  .chev{color:rgba(255,255,255,0.2);font-size:14px;flex-shrink:0;transition:transform 0.18s;user-select:none;margin-top:1px;}
+  .chev.open{transform:rotate(180deg);}
+  .cb{margin-top:11px;padding-top:11px;border-top:1px solid rgba(255,255,255,0.05);display:none;}
+  .cb.open{display:block;}
+  .cb p{font-size:13px;color:rgba(255,255,255,0.52);line-height:1.72;}
+  .cb a{display:inline-block;margin-top:9px;font-size:11px;text-decoration:none;font-weight:700;letter-spacing:0.06em;}
+  .cb img{width:100%;max-height:180px;object-fit:cover;border-radius:6px;margin-bottom:10px;opacity:0.85;}
+  .err{text-align:center;padding:48px;color:rgba(255,255,255,0.28);}
+  .err .ico{font-size:26px;margin-bottom:10px;}
+  .err p{font-size:13px;line-height:1.8;}
+  .empty{text-align:center;padding:56px;color:rgba(255,255,255,0.2);font-size:13px;line-height:1.8;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.28}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="header">
+  <div class="hi">
+    <div class="htop">
+      <div>
+        <div class="eyebrow" id="eyebrow"><span class="pulse">●</span> Live Market Intelligence · UK</div>
+        <h1>Living Markets <span id="accent-word">News Feed</span></h1>
+        <div class="sub" id="subtitle"></div>
+      </div>
+      <div class="acts">
+        <button class="btn btn-gold" id="export-btn" style="display:none" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="btn" id="refresh-btn" onclick="refresh()">↻ Refresh</button>
+        <span class="ts" id="ts"></span>
+      </div>
+    </div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+</div>
+<div id="body"><div id="content"></div></div>
+<script>
+const SECTORS = [
+  { id:"prs",   label:"PRS",        full:"Private Rented Sector",              color:"#4FC3F7", q:"UK landlord rental market renters" },
+  { id:"btr",   label:"BTR",        full:"Build to Rent",                       color:"#81C784", q:"UK build to rent BTR housing" },
+  { id:"coliv", label:"Co-Liv",     full:"Co-Living",                           color:"#CE93D8", q:"UK co-living coliving shared living" },
+  { id:"sfh",   label:"SFH",        full:"Single Family Housing",               color:"#FFB74D", q:"UK single family housing rental" },
+  { id:"pbsa",  label:"PBSA",       full:"Purpose Built Student Accommodation", color:"#F48FB1", q:"UK student accommodation PBSA" },
+  { id:"land",  label:"Land & Dev", full:"Land & Development",                  color:"#80DEEA", q:"UK planning permission housing development" },
+  { id:"deals", label:"🤝 Deals",   full:"Market Deals & Transactions",         color:"#FFBE46", q:"UK property investment acquisition deal", isDeals:true },
+];
+const SECTOR_COLORS = {PRS:"#4FC3F7",BTR:"#81C784","Co-Liv":"#CE93D8",SFH:"#FFB74D",PBSA:"#F48FB1","Land & Dev":"#80DEEA",Mixed:"#FFBE46"};
+let activeId="prs", cache={};
+const API_BASE="/api/news";
+function init(){buildTabs();setActive("prs");}
+function buildTabs(){document.getElementById("tabs").innerHTML=SECTORS.map(s=>`<button class="tab" id="tab-${s.id}" onclick="setActive('${s.id}')">${s.label}</button>`).join("");}
+function setActive(id){
+  activeId=id;
+  const s=SECTORS.find(x=>x.id===id),c=s.color;
+  document.getElementById("header").style.background=`linear-gradient(180deg,${c}0a 0%,transparent 100%)`;
+  document.getElementById("eyebrow").style.color=c;
+  document.getElementById("accent-word").style.color=c;
+  document.getElementById("subtitle").textContent=s.full;
+  document.querySelectorAll(".tab").forEach(t=>{t.classList.remove("active");t.style.cssText="background:transparent;color:rgba(255,255,255,0.36);border-bottom:2px solid transparent;margin-bottom:0";});
+  const tab=document.getElementById(`tab-${id}`);
+  tab.classList.add("active");
+  tab.style.cssText=`background:${c};color:#0B0C0D;border-bottom:2px solid ${c};margin-bottom:-1px`;
+  document.getElementById("export-btn").style.display=s.isDeals?"inline-block":"none";
+  cache[id]?render(cache[id],s):fetchNews(id);
+}
+async function fetchNews(id){
+  const s=SECTORS.find(x=>x.id===id);
+  showSpinner(s.color);
+  document.getElementById("refresh-btn").disabled=true;
+  try{
+    const res=await fetch(`${API_BASE}?q=${encodeURIComponent(s.q)}`);
+    if(!res.ok){const err=await res.json().catch(()=>({}));throw new Error(err.error||`HTTP ${res.status}`);}
+    const data=await res.json();
+    const articles=(data.articles||[]).filter(a=>a.title&&a.title!=="[Removed]");
+    cache[id]=articles;
+    render(articles,s);
+    document.getElementById("ts").textContent="Updated "+new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+  }catch(e){showError(e.message);}
+  finally{document.getElementById("refresh-btn").disabled=false;}
+}
+function refresh(){delete cache[activeId];fetchNews(activeId);}
+function render(articles,s){
+  if(!articles.length){document.getElementById("content").innerHTML=`<div class="empty">No recent articles found for <strong>${s.full}</strong>.<br/>Try refreshing.</div>`;return;}
+  if(s.isDeals){
+    const deals=articles.map(a=>({...a,sector:classifySector((a.title+" "+(a.description||"")).toLowerCase())}));
+    document.getElementById("content").innerHTML=`<div class="meta"><span>${deals.length} DEALS · ${s.full.toUpperCase()}</span><span>Expand for details · Export CSV above ↑</span></div><div class="cards">${deals.map((d,i)=>dealCard(d,i,s.color)).join("")}</div>`;
+  }else{
+    const sources=[...new Set(articles.map(a=>domainLabel(a.url)))].filter(Boolean);
+    document.getElementById("content").innerHTML=`<div class="meta"><span>${articles.length} ARTICLES · ${s.full.toUpperCase()}</span></div><div class="src-bar">${sources.map(src=>`<span class="src-chip">${esc(src)}</span>`).join("")}</div><div class="cards">${articles.map((a,i)=>newsCard(a,i,s.color)).join("")}</div>`;
   }
 }
+function newsCard(a,i,accent){
+  const src=domainLabel(a.url)||a.source?.name||"",date=formatDate(a.publishedAt),desc=a.description||"";
+  return `<div class="card" style="animation-delay:${i*38}ms" onclick="toggle(this,'${accent}')"><div class="ct"><div style="flex:1"><div class="cm"><span class="tag" style="color:${accent};background:${accent}18">${esc(src)}</span><span class="cdate">${esc(date)}</span></div><div class="ctit">${esc(a.title)}</div></div><div class="chev">▾</div></div><div class="cb">${a.urlToImage?`<img src="${esc(a.urlToImage)}" onerror="this.style.display='none'" loading="lazy"/>`:""}${desc?`<p>${esc(desc)}</p>`:""}${a.url?`<a href="${esc(a.url)}" target="_blank" style="color:${accent}">READ FULL ARTICLE →</a>`:""}</div></div>`;
+}
+function dealCard(d,i,accent){
+  const sc=SECTOR_COLORS[d.sector]||accent,src=domainLabel(d.url)||d.source?.name||"",date=formatDate(d.publishedAt),desc=d.description||"";
+  return `<div class="card card-deal" style="animation-delay:${i*38}ms;border-left-color:${sc}" onclick="toggle(this,'${accent}')"><div class="ct"><div style="flex:1"><div class="cm"><span class="tag" style="color:${sc};background:${sc}18">${esc(d.sector)}</span><span class="tag" style="color:rgba(255,255,255,0.35);background:rgba(255,255,255,0.06)">${esc(src)}</span><span class="cdate">${esc(date)}</span></div><div class="ctit">${esc(d.title)}</div></div><div class="chev">▾</div></div><div class="cb">${desc?`<p>${esc(desc)}</p>`:""}${d.url?`<a href="${esc(d.url)}" target="_blank" style="color:${accent}">READ FULL ARTICLE →</a>`:""}</div></div>`;
+}
+function toggle(el,accent){const open=el.classList.toggle("open");el.querySelector(".chev").classList.toggle("open");el.querySelector(".cb").classList.toggle("open");if(!el.classList.contains("card-deal"))el.style.borderColor=open?`${accent}55`:"var(--border)";}
+function exportCSV(){const articles=cache["deals"]||[];if(!articles.length)return;const h=["Date","Sector","Title","Source","Description","URL"];const rows=articles.map(a=>[formatDate(a.publishedAt),a.sector||"",a.title||"",domainLabel(a.url)||a.source?.name||"",a.description||"",a.url||""]);const csv=[h,...rows].map(r=>r.map(v=>`"${String(v||"").replace(/"/g,'""')}"`).join(",")).join("\n");const el=document.createElement("a");el.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));el.download=`UK_Living_Markets_Deals_${new Date().toISOString().slice(0,10)}.csv`;el.click();const btn=document.getElementById("export-btn");btn.textContent="✓ Downloaded!";btn.classList.add("btn-green");setTimeout(()=>{btn.textContent="⬇ Export CSV";btn.classList.remove("btn-green");},3000);}
+function showSpinner(color){document.getElementById("content").innerHTML=`<div class="spinner-wrap"><div class="spinner" style="border-top-color:${color}"></div><div class="spinner-label">FETCHING LATEST NEWS</div></div>`;}
+function showError(msg){document.getElementById("content").innerHTML=`<div class="err"><div class="ico">⚠</div><p>${esc(msg)}</p></div>`;}
+function classifySector(t){if(t.includes("pbsa")||t.includes("student accommodation")||t.includes("student housing"))return"PBSA";if(t.includes("build to rent")||t.includes("btr")||t.includes("build-to-rent"))return"BTR";if(t.includes("co-living")||t.includes("coliving"))return"Co-Liv";if(t.includes("single family")||t.includes("single-family")||t.includes("sfh"))return"SFH";if(t.includes("land")||t.includes("planning")||t.includes("development site"))return"Land & Dev";if(t.includes("prs")||t.includes("private rent")||t.includes("rented sector")||t.includes("landlord"))return"PRS";return"Mixed";}
+function domainLabel(url){if(!url)return"";const map={"propertyweek.com":"Property Week","insiderhousing.co.uk":"Insider Housing","reactnews.com":"React News","propertyreporter.co.uk":"Property Reporter","placenorthwest.co.uk":"Place North West","thedeveloper.live":"The Developer","pbsanews.co.uk":"PBSA News","propertywire.com":"Property Wire","landlordtoday.co.uk":"Landlord Today","property118.com":"Property 118","housingtoday.co.uk":"Housing Today","costar.com":"CoStar","egi.co.uk":"EG","estateagenttoday.co.uk":"Estate Agent Today","propertyindustryeye.com":"Property Industry Eye","thenegotiator.co.uk":"The Negotiator"};try{const host=new URL(url).hostname.replace("www.","");for(const[domain,label]of Object.entries(map)){if(host.includes(domain))return label;}return host;}catch{return"";}}
+function formatDate(str){if(!str)return"";try{return new Date(str).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});}catch{return str;}}
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+window.onload=init;
+</script>
+</body>
+</html>
