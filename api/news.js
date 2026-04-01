@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   if (!q) return res.status(400).json({ error: "Missing query param" });
 
   const apiKey = process.env.NEWSDATA_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "NEWS_API_KEY not configured" });
+  if (!apiKey) return res.status(500).json({ error: "NEWSDATA_API_KEY not configured" });
 
   try {
     const url = new URL("https://newsdata.io/api/1/news");
