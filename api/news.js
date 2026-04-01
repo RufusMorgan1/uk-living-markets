@@ -16,34 +16,16 @@ export default async function handler(req, res) {
     url.searchParams.set("language", "en");
     url.searchParams.set("sortBy", "publishedAt");
     url.searchParams.set("pageSize", "30");
-    url.searchParams.set("page", page);
-    // Focus on relevant UK property domains where possible
-    url.searchParams.set("domains", [
-      "propertyweek.com",
-      "insiderhousing.co.uk",
-      "reactnews.com",
-      "propertyreporter.co.uk",
-      "placenorthwest.co.uk",
-      "thedeveloper.live",
-      "pbsanews.co.uk",
-      "propertywire.com",
-      "landlordtoday.co.uk",
-      "property118.com",
-      "housingtoday.co.uk",
-      "costar.com",
-      "egi.co.uk",
-      "estateagenttoday.co.uk",
-      "propertyindustryeye.com",
-      "thenegotiator.co.uk",
-    ].join(","));
+    url.searchParams.set("page", String(page));
+    // No domain filter — search all sources for maximum coverage
 
     const response = await fetch(url.toString(), {
       headers: { "X-Api-Key": apiKey },
     });
 
     if (!response.ok) {
-      const err = await response.json();
-      return res.status(response.status).json({ error: err.message || "NewsAPI error" });
+      const err = await response.json().catch(() => ({}));
+      return res.status(response.status).json({ error: err.message || `NewsAPI error ${response.status}` });
     }
 
     const data = await response.json();
