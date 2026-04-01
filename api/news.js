@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 }
 ```
 
-Then go to **Vercel → Settings → Environment Variables** → edit `NEWS_API_KEY` → replace the value with:
+Then go to **Vercel → Settings → Environment Variables** → edit `NEWSDATA_API_KEY` → replace the value with:
 `pub_48f49fd969cf4f478f868c53a8efdcb3` → **Save** → **Redeploy**.
 
 Then test this in your browser:
