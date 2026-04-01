@@ -10,29 +10,26 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: "NEWS_API_KEY not configured" });
 
   try {
-    const url = new URL("https://gnews.io/api/v4/search");
-    url.searchParams.set("q", q);
-    url.searchParams.set("lang", "en");
-    url.searchParams.set("country", "gb");
-    url.searchParams.set("max", "10");
-    url.searchParams.set("sortby", "publishedAt");
+    const url = new URL("https://newsdata.io/api/1/news");
     url.searchParams.set("apikey", apiKey);
+    url.searchParams.set("q", q);
+    url.searchParams.set("language", "en");
+    url.searchParams.set("country", "gb");
 
     const response = await fetch(url.toString());
-
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      return res.status(response.status).json({ error: err.errors?.[0] || `GNews error ${response.status}` });
+      return res.status(response.status).json({ error: err.message || `Error ${response.status}` });
     }
 
     const data = await response.json();
-    const articles = (data.articles || []).map(a => ({
+    const articles = (data.results || []).map(a => ({
       title:       a.title,
       description: a.description,
-      url:         a.url,
-      urlToImage:  a.image,
-      publishedAt: a.publishedAt,
-      source:      { name: a.source?.name || "" },
+      url:         a.link,
+      urlToImage:  a.image_url,
+      publishedAt: a.pubDate,
+      source:      { name: a.source_name || "" },
     }));
 
     return res.status(200).json({ status: "ok", totalResults: articles.length, articles });
@@ -42,8 +39,9 @@ export default async function handler(req, res) {
 }
 ```
 
-Then go to Vercel → **Settings** → **Environment Variables** → edit `NEWS_API_KEY` → replace the value with your GNews key: `8e77a36bec2b5a845580050f2c96b4b4` → **Save** → **Redeploy**.
+Then go to **Vercel → Settings → Environment Variables** → edit `NEWS_API_KEY` → replace the value with:
+`pub_48f49fd969cf4f478f868c53a8efdcb3` → **Save** → **Redeploy**.
 
-Once done, test this in your browser:
+Then test this in your browser:
 ```
 https://uk-living-markets-app.vercel.app/api/news?q=UK+housing
