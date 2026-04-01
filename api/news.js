@@ -37,11 +37,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
-```
-
-Then go to **Vercel → Settings → Environment Variables** → edit `NEWSDATA_API_KEY` → replace the value with:
-`pub_48f49fd969cf4f478f868c53a8efdcb3` → **Save** → **Redeploy**.
-
-Then test this in your browser:
-```
-https://uk-living-markets-app.vercel.app/api/news?q=UK+housing
