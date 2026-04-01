@@ -1,4 +1,3 @@
-// Vercel serverless function — proxies NewsAPI so the key stays secret
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -17,7 +16,6 @@ export default async function handler(req, res) {
     url.searchParams.set("sortBy", "publishedAt");
     url.searchParams.set("pageSize", "30");
     url.searchParams.set("page", String(page));
-    // No domain filter — search all sources for maximum coverage
 
     const response = await fetch(url.toString(), {
       headers: { "X-Api-Key": apiKey },
